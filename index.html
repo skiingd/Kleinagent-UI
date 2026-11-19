@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src https: data:; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#1f6f5c">
+<title>Kleinanzeigen-Agent</title>
+<link rel="stylesheet" href="app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%8D%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<header class="top">
+  <h1>Kleinanzeigen-Agent</h1>
+  <div class="top-actions">
+    <button id="btn-run" class="primary" type="button" disabled>Jetzt suchen</button>
+    <button id="btn-settings" class="icon" type="button" aria-label="Einstellungen" title="Einstellungen">⚙</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" id="tab-watch" aria-selected="true" type="button">Watchlist</button>
+  <button role="tab" id="tab-hits" aria-selected="false" type="button">Treffer</button>
+</nav>
+
+<main>
+  <div id="msg" class="msg" hidden></div>
+
+  <section id="setup" hidden>
+    <h2>Einrichtung</h2>
+    <p>Diese Seite liest und schreibt die Watchlist in deinem privaten Repo. Dafür braucht sie
+      einmalig einen <b>Fine-grained Personal Access Token</b>. Er wird nur in diesem Browser gespeichert.</p>
+    <label>Token<input id="in-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+    <label>Repository (Besitzer/Name)<input id="in-repo" type="text" autocomplete="off" spellcheck="false"></label>
+    <div class="row">
+      <button id="btn-save-token" class="primary" type="button">Speichern &amp; laden</button>
+      <button id="btn-forget" type="button">Token löschen</button>
+    </div>
+  </section>
+
+  <section id="view-watch" hidden>
+    <div class="card">
+      <label class="inline">PLZ für Umkreissuchen
+        <input id="in-plz" type="text" inputmode="numeric" maxlength="5" pattern="\d{5}">
+      </label>
+      <p class="hint" id="budget"></p>
+    </div>
+    <div id="products"></div>
+    <button id="btn-add" type="button" class="wide">+ Produkt hinzufügen</button>
+  </section>
+
+  <section id="view-hits" hidden>
+    <p class="hint" id="last-run"></p>
+    <div id="hits"></div>
+  </section>
+</main>
+
+<div id="savebar" class="savebar" hidden>
+  <span>Ungespeicherte Änderungen</span>
+  <button id="btn-discard" type="button">Verwerfen</button>
+  <button id="btn-save" class="primary" type="button">Speichern</button>
+</div>
+
+<template id="tpl-product">
+  <details class="card product">
+    <summary>
+      <span class="p-name"></span>
+      <span class="p-meta"></span>
+    </summary>
+    <div class="p-body">
+      <label>Name<input class="f-name" type="text"></label>
+      <label class="switch"><input class="f-active" type="checkbox"> aktiv (wird gesucht)</label>
+
+      <div class="field">
+        <span class="lbl">Suchbegriffe <small>(jeder wird einzeln gesucht)</small></span>
+        <div class="chips f-terms"></div>
+        <div class="row"><input class="f-term-new" type="text" placeholder="neuer Suchbegriff" enterkeyhint="done">
+          <button class="f-term-add" type="button">Hinzufügen</button></div>
+      </div>
+
+      <label>Höchstpreis in € <small>(leer = egal; Anzeigen ohne Preis kommen immer)</small>
+        <input class="f-price" type="number" min="0" step="1" inputmode="numeric"></label>
+
+      <label>Suchgebiet
+        <select class="f-area">
+          <option value="umkreis">Nur Umkreis</option>
+          <option value="umkreis_plus_versand">Umkreis + bundesweit mit Versand</option>
+          <option value="bundesweit">Bundesweit ohne Einschränkung</option>
+        </select></label>
+
+      <label>Umkreis
+        <select class="f-radius">
+          <option>5</option><option>10</option><option>20</option><option>30</option>
+          <option>50</option><option>100</option><option>150</option><option>200</option>
+        </select></label>
+
+      <div class="field">
+        <span class="lbl">Ausschlusswörter <small>(Anzeige wird ignoriert, wenn eins im Titel steht)</small></span>
+        <div class="chips f-excl"></div>
+        <div class="row"><input class="f-excl-new" type="text" placeholder="z. B. defekt" enterkeyhint="done">
+          <button class="f-excl-add" type="button">Hinzufügen</button></div>
+      </div>
+
+      <label class="switch"><input class="f-title" type="checkbox"> Titel muss einen Suchbegriff enthalten</label>
+
+      <button class="f-delete danger" type="button">Produkt löschen</button>
+    </div>
+  </details>
+</template>
+
+<dialog id="dlg-settings">
+  <form method="dialog">
+    <h2>Einstellungen</h2>
+    <p class="hint">Token und Repository sind nur in diesem Browser gespeichert.</p>
+    <div class="row">
+      <button id="btn-edit-token" type="button">Token ändern</button>
+      <button id="btn-testpush" type="button">Test-Push senden</button>
+    </div>
+    <p class="hint"><a id="lnk-actions" target="_blank" rel="noopener">Läufe in GitHub Actions ansehen</a></p>
+    <button value="close" class="wide">Schließen</button>
+  </form>
+</dialog>
+
+<script src="js-yaml.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
