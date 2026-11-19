@@ -55,6 +55,7 @@ function msg(text, kind = "ok", sticky = false) {
   m.textContent = text;
   m.className = "msg " + kind;
   m.hidden = false;
+  m.scrollIntoView({ block: "nearest" });
   clearTimeout(msg.t);
   if (!sticky) msg.t = setTimeout(() => (m.hidden = true), 6000);
 }
@@ -72,10 +73,16 @@ async function gh(path, opts = {}) {
   };
   if (opts.body) headers["Content-Type"] = "application/json";
   let r;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
   try {
-    r = await fetch("https://api.github.com" + path, { ...opts, headers, cache: "no-store" });
+    r = await fetch("https://api.github.com" + path, { ...opts, headers, cache: "no-store", signal: ctrl.signal });
   } catch (e) {
-    throw new Error("Keine Verbindung zu GitHub. Bist du online?");
+    throw new Error(e.name === "AbortError"
+      ? "GitHub antwortet nicht (Zeitüberschreitung nach 20 s)."
+      : `Keine Verbindung zu GitHub (${e.message}). Bist du online?`);
+  } finally {
+    clearTimeout(timer);
   }
   if (!r.ok) throw new ApiError(r.status, await r.text());
   return r.status === 204 ? null : r.json();
@@ -370,16 +377,26 @@ function showSetup(show) {
   }
 }
 
-async function start() {
+async function start(fromButton = false) {
   $("#lnk-actions").href = `https://github.com/${repo}/actions`;
-  if (!token) { showSetup(true); return; }
+  if (!token) {
+    showSetup(true);
+    if (fromButton) msg("Bitte zuerst den Token in das Feld „Token“ einfügen.", "err", true);
+    return;
+  }
+  const btn = $("#btn-save-token");
+  btn.disabled = true;
+  msg(`Lade Watchlist aus ${repo} …`, "warn", true);
   try {
     await loadWatch();
   } catch (e) {
     msg(explain(e, "Watchlist laden"), "err", true);
     showSetup(true);
     return;
+  } finally {
+    btn.disabled = false;
   }
+  $("#msg").hidden = true;
   showSetup(false);
   renderProducts();
   showTab("watch");
@@ -390,9 +407,16 @@ $("#btn-save-token").addEventListener("click", () => {
   repo = $("#in-repo").value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\/$/, "") || DEFAULT_REPO;
   store.set(LS_TOKEN, token);
   store.set(LS_REPO, repo);
-  $("#msg").hidden = true;
-  start();
+  start(true);
 });
+$("#in-token").addEventListener("input", (e) => {
+  const n = e.target.value.trim().length;
+  $("#token-info").textContent = n
+    ? `Token: ${n} Zeichen${/^github_pat_/.test(e.target.value.trim()) ? "" : " – sollte mit „github_pat_“ beginnen"}`
+    : "";
+});
+window.addEventListener("error", (e) => msg("Interner Fehler: " + e.message, "err", true));
+window.addEventListener("unhandledrejection", (e) => msg("Interner Fehler: " + (e.reason?.message || e.reason), "err", true));
 $("#btn-forget").addEventListener("click", () => {
   store.del(LS_TOKEN);
   token = "";

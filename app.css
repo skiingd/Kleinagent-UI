@@ -115,3 +115,4 @@ input[type=text], input[type=password], input[type=number], select {
 .badge { font-size: .75rem; background: var(--chip); border-radius: 4px; padding: 0 5px; margin-left: 4px; font-weight: 400; }
 dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); width: min(92vw, 420px); }
 dialog::backdrop { background: rgba(0,0,0,.4); }
+.version { text-align: center; padding: 0 16px; }

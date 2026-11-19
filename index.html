@@ -8,7 +8,7 @@
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#1f6f5c">
 <title>Kleinanzeigen-Agent</title>
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=2">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%8D%3C/text%3E%3C/svg%3E">
 </head>
 <body>
@@ -33,6 +33,7 @@
     <p>Diese Seite liest und schreibt die Watchlist in deinem privaten Repo. Dafür braucht sie
       einmalig einen <b>Fine-grained Personal Access Token</b>. Er wird nur in diesem Browser gespeichert.</p>
     <label>Token<input id="in-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+    <p class="hint" id="token-info"></p>
     <label>Repository (Besitzer/Name)<input id="in-repo" type="text" autocomplete="off" spellcheck="false"></label>
     <div class="row">
       <button id="btn-save-token" class="primary" type="button">Speichern &amp; laden</button>
@@ -62,6 +63,8 @@
   <button id="btn-discard" type="button">Verwerfen</button>
   <button id="btn-save" class="primary" type="button">Speichern</button>
 </div>
+
+<p class="hint version">Version 2</p>
 
 <template id="tpl-product">
   <details class="card product">
@@ -124,6 +127,6 @@
 </dialog>
 
 <script src="js-yaml.min.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
